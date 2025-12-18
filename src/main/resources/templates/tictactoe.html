@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Tic Tac Toe </title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  body {
+    background: radial-gradient(circle at top, #0f172a, #000 60%, #020617);
+    overflow:hidden;
+    animation:fadeInBg 1.2s ease-out forwards;
+  }
+
+  @keyframes fadeInBg {
+    from {opacity:0;}
+    to   {opacity:1;}
+  }
+
+  /* CELL DEFAULT FIX */
+  .cell{
+    width:90px;
+    height:90px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:3rem;
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:12px;
+    cursor:pointer;
+    transition:.18s ease;
+    user-select:none;
+  }
+
+  .cell:hover{
+    transform:scale(1.07);
+    box-shadow:
+      0 0 18px rgba(0,255,255,.45),
+      inset 0 0 22px rgba(0,255,255,.25);
+    backdrop-filter:blur(6px);
+  }
+
+  .cell:active{
+    transform:scale(.88) rotateX(8deg);
+    filter:brightness(1.4);
+  }
+
+  /* pulsing window glow */
+  @keyframes boardGlow {
+    0% {box-shadow:0 0 8px rgba(56,189,248,.2);}
+    50%{box-shadow:0 0 36px rgba(236,72,153,.4);}
+    100%{box-shadow:0 0 8px rgba(56,189,248,.2);}
+  }
+
+  /* floating orbs */
+  @keyframes floatOrb {
+    0% {transform:translate(0,0) scale(1);}
+    50%{transform:translate(24px,-18px) scale(1.1);}
+    100%{transform:translate(0,0) scale(1);}
+  }
+
+  /* SVG win line */
+  .win-line {
+    stroke: rgb(207, 40, 40);
+    stroke-width: 4px;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 18px #ea3535);
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation:
+      drawStroke 1.3s ease forwards,
+      neonPulse 1.4s ease infinite alternate;
+  }
+
+  @keyframes drawStroke { to { stroke-dashoffset: 0; } }
+
+  @keyframes neonPulse {
+    0% {filter:drop-shadow(0 0 6px #de4a4a);}
+    100%{filter:drop-shadow(0 0 22px #22d3ee);}
+  }
+
+  /* winner pop */
+  @keyframes winnerPop {
+    0% {transform:scale(.6);opacity:0;}
+    60%{transform:scale(1.18);opacity:1;}
+    100%{transform:scale(1);opacity:1;}
+  }
+
+  /* spark */
+  @keyframes spark {
+    from {opacity:1; transform:scale(1);}
+    to   {opacity:0; transform:translateY(40px) scale(.15);}
+  }
+
+  /* confetti */
+  @keyframes confettiFall {
+    0% { transform: translateY(-200px) rotate(0); opacity:1;}
+    100%{ transform: translateY(600px) rotate(360deg); opacity:0;}
+  }
+
+  /* dots */
+  @keyframes dots {
+    0% {content:".";}
+    33%{content:"..";}
+    66%{content:"...";}
+    100%{content:".";}
+  }
+  .thinking::after{
+    content:"";
+    animation:dots .95s infinite;
+  }
+
+  /* AI rotating loader circle */
+  @keyframes rotateNeon {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+  }
+  .ai-loader {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 4px solid rgba(34,211,238,0.25);
+    border-top-color: rgb(34,211,238);
+    filter: drop-shadow(0 0 6px rgba(34,211,238,0.9));
+    animation: rotateNeon 1s linear infinite;
+  }
+
+  /* restart neon */
+  @keyframes restartPulse {
+    0% {transform:scale(1);}
+    50%{transform:scale(1.07);}
+    100%{transform:scale(1);}
+  }
+
+  .restart-animate {
+    animation:restartPulse 1.5s ease-in-out infinite;
+  }
+
+</style>
+
+</head>
+
+<body class="text-white flex flex-col items-center justify-center min-h-screen relative">
+
+<!-- orbs -->
+<div class="absolute inset-0 pointer-events-none overflow-hidden">
+  <div class="absolute w-[26rem] h-[26rem] bg-cyan-500/25 blur-[200px] rounded-full left-10 top-16"
+       style="animation: floatOrb 14s infinite;"></div>
+  <div class="absolute w-[32rem] h-[32rem] bg-purple-500/20 blur-[220px] rounded-full right-10 bottom-24"
+       style="animation: floatOrb 19s infinite reverse;"></div>
+</div>
+
+<main class="relative z-10 select-none">
+
+  <h1 class="text-5xl mb-10 font-bold bg-gradient-to-r
+      from-cyan-400 via-purple-400 to-yellow-300 text-transparent bg-clip-text">
+       Tic Tac Toe
+  </h1>
+
+  <!-- board container -->
+  <div id="boardContainer" class="relative inline-block">
+
+    <div id="board"
+      class="grid grid-cols-3 gap-4 bg-white/10 p-8 rounded-3xl backdrop-blur-xl
+             border border-white/20 shadow-[0_0_30px_rgba(255,255,255,.4)]"
+      style="animation: boardGlow 6s ease infinite;">
+      
+      <div id="00" class="cell"></div>
+      <div id="01" class="cell"></div>
+      <div id="02" class="cell"></div>
+
+      <div id="10" class="cell"></div>
+      <div id="11" class="cell"></div>
+      <div id="12" class="cell"></div>
+
+      <div id="20" class="cell"></div>
+      <div id="21" class="cell"></div>
+      <div id="22" class="cell"></div>
+
+    </div>
+
+    <svg id="lineSVG"
+      class="absolute inset-0 pointer-events-none"
+      width="100%" height="100%">
+    </svg>
+
+  </div>
+
+  <!-- AI loader -->
+  <div id="aiThinking"
+       class="opacity-0 mt-5 text-xl text-cyan-300 transition-all
+              flex items-center justify-center gap-3">
+      <div class="ai-loader"></div>
+      <span>AI thinking<span class="thinking"></span></span>
+  </div>
+
+  <!-- winner -->
+  <div id="winnerText"
+       class="opacity-0 mt-10 text-4xl text-center font-bold transition">
+  </div>
+
+  <!-- restart -->
+  <button id="restartBtn"
+    onclick="restartGame()"
+    class="opacity-0 mt-6 px-8 py-3 rounded-xl text-xl font-semibold
+           border border-cyan-400/40 backdrop-blur-xl restartButtonBg
+           bg-gradient-to-r from-cyan-400/30 to-purple-500/30
+           hover:scale-110 active:scale-95
+           transition-all shadow-lg hover:shadow-[0_0_26px_rgba(0,255,255,.7)]">
+    Restart Game
+  </button>
+
+</main>
+
+<script>
+
+let gameOver = false;
+
+document.querySelectorAll(".cell").forEach(cell=>{
+  cell.onclick=()=>{
+    if(gameOver) return;
+    sendMove(cell.id[0],cell.id[1]);
+  };
+});
+
+function sendMove(row,col){
+
+  aiThinking.style.opacity = 1;
+
+  fetch(`/move?row=${row}&col=${col}`,{method:"POST"})
+  .then(res=>res.json())
+  .then(data=>{
+
+    aiThinking.style.opacity = 0;
+
+    updateBoard(data.board);
+
+    if(data.winner){
+      gameOver = true;
+      setTimeout(()=>{
+
+        if(data.winningLine){
+          drawSVGWinLine(data.winningLine);
+        }
+
+        fireworksBurst();
+        dropConfetti();
+        showWinner(data.winner);
+
+      },900);
+    }
+  });
+}
+
+function updateBoard(board){
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      document.getElementById(`${r}${c}`).textContent=
+      board[r][c]==='_'?'':board[r][c];
+    }
+  }
+}
+
+function drawSVGWinLine(ids){
+
+  const svg = document.getElementById("lineSVG");
+  svg.innerHTML="";
+
+  const A = center(ids[0]);
+  const B = center(ids[2]);
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+  line.setAttribute("x1",A.x);
+  line.setAttribute("y1",A.y);
+  line.setAttribute("x2",B.x);
+  line.setAttribute("y2",B.y);
+  line.setAttribute("class","win-line");
+
+  svg.appendChild(line);
+}
+
+function center(id){
+
+  const rect=document.getElementById(id).getBoundingClientRect();
+  const board=document.getElementById("board").getBoundingClientRect();
+
+  return{
+    x: rect.left-board.left+rect.width/2,
+    y: rect.top -board.top +rect.height/2
+  };
+}
+
+function showWinner(winner){
+
+  let t=document.getElementById("winnerText");
+
+  t.innerHTML = winner==="Draw" ? "It's a Draw 😐" : `${winner} Wins 🎉, Try One More Time`;
+  t.style.opacity=1;
+  t.style.animation="winnerPop .8s ease forwards";
+
+  const btn=document.getElementById("restartBtn");
+  btn.style.opacity=1;
+  btn.classList.add("restart-animate");
+}
+
+function fireworksBurst(){
+
+  for(let i=0;i<10;i++){
+    let sp=document.createElement("div");
+    sp.className="absolute w-2 h-2 bg-lime-300 rounded-full";
+    sp.style.left=(innerWidth/2)+"px";
+    sp.style.top=(innerHeight/2)+"px";
+    sp.style.animation="spark .9s ease forwards";
+    document.body.appendChild(sp);
+
+    setTimeout(()=>sp.remove(),1000);
+  }
+}
+
+function dropConfetti(){
+
+  for(let i=0;i<40;i++){
+    let conf=document.createElement("div");
+    conf.className="absolute w-2 h-2 rounded-full opacity-90";
+
+    const colors=["#22d3ee","#e879f9","#facc15","#4ade80"];
+    conf.style.background =
+      colors[Math.floor(Math.random()*4)];
+
+    conf.style.left=Math.random()*innerWidth+"px";
+    conf.style.animation=
+      `confettiFall ${1+Math.random()*1.6}s linear forwards`;
+
+    document.body.appendChild(conf);
+
+    setTimeout(()=>conf.remove(),2500);
+  }
+}
+
+function restartGame(){
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
